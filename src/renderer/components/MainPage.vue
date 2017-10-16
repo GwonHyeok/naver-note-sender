@@ -19,8 +19,21 @@
                     <!-- 프록시 정보 -->
                     <div class="column is-6">
                         <div class="columns">
-                            <div class="column is-6">
-                                <p class="title is-6">프록시 리스트</p>
+                            <div class="column is-3 has-text-centered">
+                                <div id="title-proxy-list" class="title is-6 is-fullwidth is-white">프록시 리스트</div>
+                            </div>
+                            <div class="column is-3">
+                                <div class="file is-primary is-fullwidth file-proxies has-text-centered">
+                                    <label class="file-label is-fullwidth">
+                                        <input class="file-input" type="file" name="resume" accept=".txt"
+                                               v-on:change="openProxyFromFile">
+                                        <span class="file-cta">
+                                        <span class="file-label is-fullwidth">
+                                            파일 선택
+                                        </span>
+                                    </span>
+                                    </label>
+                                </div>
                             </div>
                             <div class="column is-3">
                                 <p class="button is-fullwidth is-primary" v-on:click="openProxyModal()">추가하기</p>
@@ -35,7 +48,7 @@
                                 <th>아이피</th>
                                 <th>포트</th>
                                 <th>지연률</th>
-                                <th>삭제</th>
+                                <th v-on:click="clearProxies">삭제</th>
                             </tr>
                             </thead>
                             <tbody>
@@ -227,6 +240,17 @@
         // 유저 정보를 csv 에서 요청
         this.$electron.ipcRenderer.send('request-users-from-csv', file.path)
       },
+      openProxyFromFile (e) {
+        const files = e.target.files || e.dataTransfer.files
+        if (files.length === 0) return alert('파일을 선택해주세요')
+
+        // 파일 확장자 확인
+        const file = files[0]
+        if (file.path.indexOf('.txt') === -1) return alert('txt 파일만 지원합니다')
+
+        // 프록시 정보를 csv 에서 요청
+        this.$electron.ipcRenderer.send('request-proxies-from-file', file.path)
+      },
       openProxyModal () {
         this.isActiveProxyModal = true
       },
@@ -236,6 +260,9 @@
       addProxyItem () {
         this.proxies.push({ip: this.proxyModalInputIp, port: this.proxyModalInputPort, responseTimeMills: 0})
         this.closeProxyModal()
+      },
+      clearProxies () {
+        this.proxies = []
       },
       updateProxyStatus () {
         this.$electron.ipcRenderer.send('request-check-proxies', this.proxies)
@@ -361,5 +388,18 @@
 
     .group-user-info {
         margin-top: 3.4rem;
+    }
+
+    #title-proxy-list {
+        padding-top: 0.5rem;
+        padding-bottom: 0.5rem;
+    }
+
+    .file-proxies .file-cta {
+        width: 100%
+    }
+
+    .file-proxies .file-label {
+        justify-content: center;
     }
 </style>

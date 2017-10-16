@@ -215,3 +215,14 @@ ipcMain.on('download-send-result', (event, users) => {
     }
   })
 })
+
+ipcMain.on('request-proxies-from-file', (event, path) => {
+  fs.readFile(path, 'utf8', (err, data) => {
+    if (err) console.error('fail')
+    const proxies = data.split(/\r?\n/).map(item => {
+      const proxyInfo = item.split(':')
+      return {ip: proxyInfo[0], port: proxyInfo[1], responseTimeMills: 0}
+    })
+    event.sender.send('get-saved-proxies', proxies)
+  })
+})
