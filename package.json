@@ -1,6 +1,6 @@
 {
   "name": "naver-message-sender",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "author": "GwonHyeok <me@ghyeok.io>",
   "description": "네이버 메일/쪽지 보내는 프로그램",
   "license": null,
