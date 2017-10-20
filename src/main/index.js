@@ -84,7 +84,9 @@ ipcMain.on('sync-proxy-server', (event, data) => {
 ipcMain.on('request-users-from-csv', (event, path) => {
   csv.fromPath(path, {headers: true})
     .on('data', function (data) {
-      event.sender.send('response-user', {id: data['아이디'], isSuccess: null, usedProxy: null, usedNaverUser: null})
+      // 인코딩 관련 문제로 첫번째 열이 무조건 아이디로 가정하고 작업
+      const idKey = Object.keys(data)[0]
+      event.sender.send('response-user', {id: data[idKey], isSuccess: null, usedProxy: null, usedNaverUser: null})
     })
     .on('end', function () {
       event.sender.send('complete-user')
