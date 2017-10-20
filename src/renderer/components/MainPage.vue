@@ -64,7 +64,7 @@
 
                     <!-- 쪽지 전송 정보 -->
                     <div class="column is-6">
-                        <div class="field">
+                        <div class="field" v-on:dragover="$event.preventDefault()" v-on:drop="onDropUserFile">
                             <label class="label">유저 파일 업로드</label>
                             <div class="file is-primary">
                                 <label class="file-label">
@@ -239,6 +239,10 @@
 
         // 유저 정보를 csv 에서 요청
         this.$electron.ipcRenderer.send('request-users-from-csv', file.path)
+      },
+      onDropUserFile (e) {
+        e.preventDefault()
+        this.onChangeUserFile(e)
       },
       openProxyFromFile (e) {
         const files = e.target.files || e.dataTransfer.files
