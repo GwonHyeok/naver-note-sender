@@ -8,6 +8,7 @@ import { doLogin, doSendNote } from './naver'
 import Store from 'electron-store'
 import json2csv from 'json2csv'
 import fs from 'fs'
+import { machineIdSync } from 'node-machine-id'
 
 // Global App Data Store
 const appDataStore = new Store()
@@ -227,4 +228,9 @@ ipcMain.on('request-proxies-from-file', (event, path) => {
     })
     event.sender.send('get-saved-proxies', proxies)
   })
+})
+
+// MacAddress 요청
+ipcMain.on('request-machine-id', (event) => {
+  event.sender.send('response-machine-id', machineIdSync())
 })

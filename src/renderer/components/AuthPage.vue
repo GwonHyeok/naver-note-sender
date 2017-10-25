@@ -1,132 +1,124 @@
 <template>
-    <div id="wrapper">
-        <img id="logo" src="~@/assets/logo.png" alt="electron-vue">
-        <main>
-            <div class="left-side">
-        <span class="title">
-          Welcome to your new project!
-        </span>
-            </div>
+    <div class="container">
 
-            <div class="right-side">
-                <div class="doc">
-                    <div class="title">Getting Started</div>
-                    <p>
-                        electron-vue comes packed with detailed documentation that covers everything from
-                        internal configurations, using the project structure, building your application,
-                        and so much more.
-                    </p>
-                    <button @click="open('https://simulatedgreg.gitbooks.io/electron-vue/content/')">Read the Docs
-                    </button>
-                    <br><br>
-                </div>
-                <div class="doc">
-                    <div class="title alt">Other Documentation</div>
-                    <button class="alt" @click="open('https://electron.atom.io/docs/')">Electron</button>
-                    <button class="alt" @click="open('https://vuejs.org/v2/guide/')">Vue.js</button>
-                </div>
-            </div>
-        </main>
+        <label class="label is-large">인증 코드를 입력해 주세요</label>
+
+        <div class="field">
+            <p class="control">
+                <input v-model="passCode" class="input" type="password" placeholder="인증코드">
+            </p>
+        </div>
+
+        <div class="field">
+            <p class="control">
+                <button @click="authorize" class="button is-success">
+                    인증하기
+                </button>
+            </p>
+        </div>
+
     </div>
 </template>
 
 <script>
+  import { db } from '@/firebase'
+
   export default {
-    name: 'landing-page',
+    name: 'auth-page',
+    components: {},
+    data: function () {
+      return {
+        passCode: '',
+        machineId: ''
+      }
+    },
+    firebase: {
+      dbAuthCodes: db.ref('authCodes')
+    },
+    mounted: function () {
+      this.$electron.ipcRenderer.send('request-machine-id')
+      this.$electron.ipcRenderer.on('response-machine-id', (event, machineId) => {
+        this.machineId = machineId
+      })
+    },
     methods: {
       open (link) {
         this.$electron.shell.openExternal(link)
+      },
+      goMain () {
+        this.$router.replace('main')
+      },
+      authorize () {
+        // 우선 인증 코드는 존재하고 유저의 맥어드레스를 확인해서 48시간 이내에 다른 컴퓨터에서의 접속인지 확인한다.
+        const authRef = this.$firebaseRefs.dbAuthCodes.orderByChild('code').equalTo(this.passCode)
+        authRef.once('value', snapShot => {
+          if (snapShot.val() !== null) {
+            // 로그인 기록이 있다면 기기 고유 아이디를 확인하고 같다면 로그인을 시켜주고
+            // 다른 고유아이디를 가지고 있다면 48시간이 지난 후에 들어갈 수 있게 해준다
+            const authLogKey = Object.keys(snapShot.val())[0]
+            const authLog = Object.values(snapShot.val())[0]
+
+            // 인증 코드에 접속 로그가 없다면 기기 아이디를 저장하고 로그인을 시켜준다.
+            if (!authLog.machineId) {
+              const newAuthLog = {...authLog}
+              newAuthLog.loggedInAt = Date.now()
+              newAuthLog.machineId = this.machineId
+              delete newAuthLog['.key']
+              this.$firebaseRefs.dbAuthCodes.child(authLogKey).set(newAuthLog)
+              return this.goMain()
+            }
+
+            // 머신 아이디가 같음 로그인 가능
+            if (authLog.machineId === this.machineId) {
+              const newAuthLog = {...authLog}
+              newAuthLog.loggedInAt = Date.now()
+              delete newAuthLog['.key']
+              this.$firebaseRefs.dbAuthCodes.child(authLogKey).set(newAuthLog)
+              return this.goMain()
+            }
+
+            // 유저의 마지막 로그인 시간과 현재 로그인 시간을 체크하여 48시간이 지났으면 로그인 시켜준다
+            const latestLoggedInAt = authLog.loggedInAt
+            const currentDate = Date.now()
+            const loggedInTimeDiff = currentDate - latestLoggedInAt
+            const leftLoggedInMinute = loggedInTimeDiff / 1000 / 60
+
+            // 48시간 이상 지남 새로운 기기 아이디로 로그인 할 수 있음
+            if (leftLoggedInMinute >= 48 * 60) {
+              const newAuthLog = {...authLog}
+              newAuthLog.loggedInAt = Date.now()
+              newAuthLog.machineId = this.machineId
+              delete newAuthLog['.key']
+              this.$firebaseRefs.dbAuthCodes.child(authLogKey).set(newAuthLog)
+              return this.goMain()
+            }
+
+            // 해당 유저는 이 프로그램을 이용할 수 없음, 기기 아이디가 다른데 48시간이 지나지 않음
+            alert('다른 기기에서 로그인 할 수 없습니다')
+          } else {
+            alert('인증 실패')
+          }
+        })
       }
-    },
-    mounted: function () {
-      this.$router.replace('main')
     }
   }
 </script>
 
-<style>
-    @import url('https://fonts.googleapis.com/css?family=Source+Sans+Pro');
-
-    * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
+<style scoped>
+    .container {
+        padding-top: 25%;
+        text-align: center;
     }
 
-    body {
-        font-family: 'Source Sans Pro', sans-serif;
+    .button {
+        width: 84%;
     }
 
-    #wrapper {
-        background: radial-gradient(
-                ellipse at top left,
-                rgba(255, 255, 255, 1) 40%,
-                rgba(229, 229, 229, .9) 100%
-        );
-        height: 100vh;
-        padding: 60px 80px;
-        width: 100vw;
+    .control {
+        text-align: center;
     }
 
-    #logo {
-        height: auto;
-        margin-bottom: 20px;
-        width: 420px;
-    }
-
-    main {
-        display: flex;
-        justify-content: space-between;
-    }
-
-    main > div {
-        flex-basis: 50%;
-    }
-
-    .left-side {
-        display: flex;
-        flex-direction: column;
-    }
-
-    .welcome {
-        color: #555;
-        font-size: 23px;
-        margin-bottom: 10px;
-    }
-
-    .title {
-        color: #2c3e50;
-        font-size: 20px;
-        font-weight: bold;
-        margin-bottom: 6px;
-    }
-
-    .title.alt {
-        font-size: 18px;
-        margin-bottom: 10px;
-    }
-
-    .doc p {
-        color: black;
-        margin-bottom: 10px;
-    }
-
-    .doc button {
-        font-size: .8em;
-        cursor: pointer;
-        outline: none;
-        padding: 0.75em 2em;
-        border-radius: 2em;
-        display: inline-block;
-        color: #fff;
-        background-color: #4fc08d;
-        transition: all 0.15s ease;
-        box-sizing: border-box;
-        border: 1px solid #4fc08d;
-    }
-
-    .doc button.alt {
-        color: #42b983;
-        background-color: transparent;
+    input.input {
+        width: 84%;
     }
 </style>
